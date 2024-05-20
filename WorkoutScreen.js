@@ -3,13 +3,11 @@ import { View, Text, FlatList, StyleSheet, Alert, Dimensions, TouchableOpacity, 
 import axios from 'axios';
 import { Card } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import { useNavigation } from '@react-navigation/native';
 import LottieView from 'lottie-react-native'; // Import LottieView for animations
 
 const { width, height } = Dimensions.get('window');
 
 function WorkoutScreen() {
-  const navigation = useNavigation();
   const [bodyParts, setBodyParts] = useState([]);
   const [selectedBodyPart, setSelectedBodyPart] = useState('');
   const [exercises, setExercises] = useState([]);
@@ -19,6 +17,7 @@ function WorkoutScreen() {
   const [sets, setSets] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [currentExercise, setCurrentExercise] = useState(null);
+  const [workoutModalVisible, setWorkoutModalVisible] = useState(false);
   const animationRefs = useRef({});
   const [activeAnimation, setActiveAnimation] = useState(null);
 
@@ -74,7 +73,7 @@ function WorkoutScreen() {
       setWeights(prev => ({ ...prev, [exercise.id]: '' }));
       setReps(prev => ({ ...prev, [exercise.id]: '' }));
       setSets(prev => ({ ...prev, [exercise.id]: '' }));
-    }, 1000); // Duration for animation visibility
+    }, 5000); // Adjust this value to the duration of the animation in milliseconds
   };
 
   const openModal = (exercise) => {
@@ -92,7 +91,11 @@ function WorkoutScreen() {
   };
 
   const viewWorkout = () => {
-    navigation.navigate('WorkoutList', { workoutExercises, weights, reps, sets });
+    setWorkoutModalVisible(true);
+  };
+
+  const closeWorkoutModal = () => {
+    setWorkoutModalVisible(false);
   };
 
   return (
@@ -141,26 +144,35 @@ function WorkoutScreen() {
         style={styles.exerciseList}
         contentContainerStyle={styles.exerciseListContent}
       />
-      <Text style={styles.subTitle}>Your Workout</Text>
-      <FlatList
-        data={workoutExercises}
-        keyExtractor={(item) => item.id.toString()} // Ensure each key is unique
-        renderItem={({ item }) => (
-          <View style={styles.workoutItem}>
-            <Text style={styles.exerciseName}>{item.name}</Text>
-            <TouchableOpacity style={styles.editButton} onPress={() => openModal(item)}>
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        style={styles.workoutList}
-        contentContainerStyle={styles.workoutListContent}
-      />
-      {workoutExercises.length > 0 && (
-        <TouchableOpacity style={styles.viewWorkoutButton} onPress={viewWorkout}>
-          <Text style={styles.viewWorkoutButtonText}>View Workout</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity style={styles.viewWorkoutButton} onPress={viewWorkout}>
+        <Text style={styles.viewWorkoutButtonText}>View Workout</Text>
+      </TouchableOpacity>
+      <Modal
+        visible={workoutModalVisible}
+        animationType="slide"
+        onRequestClose={closeWorkoutModal}
+      >
+        <View style={styles.modalContainer}>
+          <Text style={styles.subTitle}>Your Workout</Text>
+          <FlatList
+            data={workoutExercises}
+            keyExtractor={(item) => item.id.toString()} // Ensure each key is unique
+            renderItem={({ item }) => (
+              <View style={styles.workoutItem}>
+                <Text style={styles.exerciseName}>{item.name}</Text>
+                <TouchableOpacity style={styles.editButton} onPress={() => openModal(item)}>
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            style={styles.workoutList}
+            contentContainerStyle={styles.workoutListContent}
+          />
+          <TouchableOpacity style={styles.closeModalButton} onPress={closeWorkoutModal}>
+            <Text style={styles.closeModalButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -379,9 +391,21 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: 'bold',
   },
+  closeModalButton: {
+    backgroundColor: '#ffdf00',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  closeModalButtonText: {
+    color: '#000',
+    fontWeight: 'bold',
+  },
 });
 
 export default WorkoutScreen;
+
 
 
 

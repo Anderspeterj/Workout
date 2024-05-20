@@ -4,8 +4,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ApplicationProvider } from '@ui-kitten/components';
 import * as eva from '@eva-design/eva';
-import HomeScreen from './HomeScreen';
-import WorkoutScreen from './WorkoutScreen';
+import HomeScreen from './Homescreen'; // Ensure this path is correct
+import WorkoutScreen from './WorkoutScreen'; // Ensure this path is correct
 import WorkoutListScreen from './WorkoutListScreen';
 import { enableScreens } from 'react-native-screens';
 
@@ -39,6 +39,8 @@ export default function App() {
     </ApplicationProvider>
   );
 }
+
+
 
 
 
