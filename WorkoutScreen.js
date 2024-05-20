@@ -1,31 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image, StyleSheet, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, FlatList, StyleSheet, Alert, Dimensions, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import axios from 'axios';
+import { Card } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import apiClient from './apiService';
-import { Provider as PaperProvider } from 'react-native-paper';
-import App from './App';
+import { useNavigation } from '@react-navigation/native';
+import LottieView from 'lottie-react-native'; // Import LottieView for animations
 
 const { width, height } = Dimensions.get('window');
 
-
-
-
 function WorkoutScreen() {
+  const navigation = useNavigation();
   const [bodyParts, setBodyParts] = useState([]);
   const [selectedBodyPart, setSelectedBodyPart] = useState('');
   const [exercises, setExercises] = useState([]);
   const [workoutExercises, setWorkoutExercises] = useState([]);
-  const [selectedExercise, setSelectedExercise] = useState(null);
   const [weights, setWeights] = useState({});
   const [reps, setReps] = useState({});
-
-  useEffect(() => {
-    fetchBodyParts();
-  }, []);
+  const [sets, setSets] = useState({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentExercise, setCurrentExercise] = useState(null);
+  const animationRefs = useRef({});
+  const [activeAnimation, setActiveAnimation] = useState(null);
 
   const fetchBodyParts = async () => {
     try {
-      const response = await apiClient.get('/exercises/bodyPartList');
+      const response = await axios.get('https://exercisedb.p.rapidapi.com/exercises/bodyPartList', {
+        headers: {
+          'X-RapidAPI-Key': '8635fbc913mshbb084128b19528fp1f742djsn79f2d47b3468',
+          'X-RapidAPI-Host': 'exercisedb.p.rapidapi.com'
+        }
+      });
       setBodyParts(response.data);
     } catch (error) {
       console.error('Failed to fetch body parts:', error);
@@ -33,64 +37,173 @@ function WorkoutScreen() {
     }
   };
 
+  useEffect(() => {
+    fetchBodyParts();
+  }, []);
+
   const fetchExercises = async () => {
     if (selectedBodyPart) {
       try {
-        const response = await apiClient.get(`/exercises/bodyPart/${selectedBodyPart}`);
+        const response = await axios.get(`https://exercisedb.p.rapidapi.com/exercises/bodyPart/${selectedBodyPart}`, {
+          headers: {
+            'X-RapidAPI-Key': '8635fbc913mshbb084128b19528fp1f742djsn79f2d47b3468',
+            'X-RapidAPI-Host': 'exercisedb.p.rapidapi.com'
+          }
+        });
         setExercises(response.data);
       } catch (error) {
         console.error('Failed to fetch exercises:', error);
         Alert.alert('Error', 'Failed to load exercises');
       }
     } else {
-      Alert.alert('Input Required', 'Please select a muscle group to search for.');
+      Alert.alert('Input Required', 'Please select a muscle group to filter.');
     }
-  };
-
-  const handleSearch = () => {
-    fetchExercises();
   };
 
   const addToWorkout = (exercise) => {
-    setWorkoutExercises(prev => [...prev, exercise]);
-    setWeights(prev => ({ ...prev, [exercise.id]: '' }));
-    setReps(prev => ({ ...prev, [exercise.id]: '' }));
+    setActiveAnimation(exercise.id);
+    setTimeout(() => {
+      if (animationRefs.current[exercise.id]) {
+        animationRefs.current[exercise.id].play();
+      }
+    }, 50); // Give a short delay to ensure ref is ready before calling play
+
+    setTimeout(() => {
+      setActiveAnimation(null);
+      setWorkoutExercises(prev => [...prev, exercise]);
+      setWeights(prev => ({ ...prev, [exercise.id]: '' }));
+      setReps(prev => ({ ...prev, [exercise.id]: '' }));
+      setSets(prev => ({ ...prev, [exercise.id]: '' }));
+    }, 1000); // Duration for animation visibility
   };
 
-  const calculateOneRM = (exerciseId) => {
-    const weight = weights[exerciseId];
-    const rep = reps[exerciseId];
-    if (weight && rep) {
-      const oneRM = weight * (1 + rep / 30);
-      Alert.alert('1RM', `Your 1RM for this exercise is: ${oneRM.toFixed(2)} kgs`);
-    }
+  const openModal = (exercise) => {
+    setCurrentExercise(exercise);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setCurrentExercise(null);
+    setModalVisible(false);
+  };
+
+  const saveExerciseDetails = () => {
+    closeModal();
+  };
+
+  const viewWorkout = () => {
+    navigation.navigate('WorkoutList', { workoutExercises, weights, reps, sets });
   };
 
   return (
-    <View style={{ flex: 1, padding: 20, backgroundColor: '#121212' }}>
-      <TextInput 
-        label="Search muscle group" 
-        value={selectedBodyPart} 
-        onChangeText={setSelectedBodyPart} 
-        mode="outlined" 
-        style={{ marginBottom: 10 }}
-      />
-      <Button mode="contained" onPress={handleSearch} style={{ marginBottom: 10 }}>
-        Search
-      </Button>
+    <View style={styles.container}>
+      <Text style={styles.title}>Create Your Workout</Text>
+      <Picker
+        selectedValue={selectedBodyPart}
+        onValueChange={(itemValue) => setSelectedBodyPart(itemValue)}
+        style={styles.picker}
+      >
+        <Picker.Item label="Select Body Part" value="" />
+        {bodyParts.map((part, index) => (
+          <Picker.Item key={index.toString()} label={part} value={part} />
+        ))}
+      </Picker>
+      <TouchableOpacity style={styles.filterButton} onPress={fetchExercises}>
+        <Text style={styles.filterButtonText}>Filter</Text>
+      </TouchableOpacity>
       <FlatList
         data={exercises}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id.toString()} // Ensure each key is unique
         renderItem={({ item }) => (
-          <Card style={{ marginVertical: 8 }}>
-            <Card.Title title={item.name} />
-            <Card.Cover source={{ uri: item.gifUrl }} />
-            <Card.Actions>
-              <Button onPress={() => addToWorkout(item)}>Add to Workout</Button>
-            </Card.Actions>
+          <Card style={styles.card}>
+            <View style={styles.cardContent}>
+              <Card.Cover source={{ uri: item.gifUrl }} style={styles.exerciseImage} />
+              <View style={styles.exerciseDetails}>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={styles.exerciseDescription}>{item.target} exercise targeting {item.bodyPart}.</Text>
+                <TouchableOpacity style={styles.addButton} onPress={() => addToWorkout(item)}>
+                  {activeAnimation === item.id ? (
+                    <LottieView
+                      ref={ref => (animationRefs.current[item.id] = ref)}
+                      source={require('../Workout/assets/animations/bear-drinking-tea.json')}
+                      autoPlay={false}
+                      loop={false}
+                      style={styles.animation}
+                    />
+                  ) : (
+                    <Text style={styles.addButtonText}>Add to Workout</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
           </Card>
         )}
+        style={styles.exerciseList}
+        contentContainerStyle={styles.exerciseListContent}
       />
+      <Text style={styles.subTitle}>Your Workout</Text>
+      <FlatList
+        data={workoutExercises}
+        keyExtractor={(item) => item.id.toString()} // Ensure each key is unique
+        renderItem={({ item }) => (
+          <View style={styles.workoutItem}>
+            <Text style={styles.exerciseName}>{item.name}</Text>
+            <TouchableOpacity style={styles.editButton} onPress={() => openModal(item)}>
+              <Text style={styles.editButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        style={styles.workoutList}
+        contentContainerStyle={styles.workoutListContent}
+      />
+      {workoutExercises.length > 0 && (
+        <TouchableOpacity style={styles.viewWorkoutButton} onPress={viewWorkout}>
+          <Text style={styles.viewWorkoutButtonText}>View Workout</Text>
+        </TouchableOpacity>
+      )}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        onRequestClose={closeModal}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Exercise</Text>
+            {currentExercise && (
+              <>
+                <Text style={styles.exerciseName}>{currentExercise.name}</Text>
+                <TextInput
+                  placeholder="Weight"
+                  placeholderTextColor="#bbb"
+                  value={weights[currentExercise.id]}
+                  onChangeText={(text) => setWeights({ ...weights, [currentExercise.id]: text })}
+                  style={styles.inputLarge}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  placeholder="Reps"
+                  placeholderTextColor="#bbb"
+                  value={reps[currentExercise.id]}
+                  onChangeText={(text) => setReps({ ...reps, [currentExercise.id]: text })}
+                  style={styles.inputLarge}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  placeholder="Sets"
+                  placeholderTextColor="#bbb"
+                  value={sets[currentExercise.id]}
+                  onChangeText={(text) => setSets({ ...sets, [currentExercise.id]: text })}
+                  style={styles.inputLarge}
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity style={styles.saveButton} onPress={saveExerciseDetails}>
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -98,49 +211,97 @@ function WorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',  // Consistent dark background
+    backgroundColor: '#121212',
     padding: 20,
   },
-  input: {
-    height: 50,
-    backgroundColor: '#333',  // Unified dark gray for inputs
+  title: {
+    fontSize: 26,
+    fontWeight: 'bold',
     color: '#fff',
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    fontSize: 16,
-    marginBottom: 15,
-  },
-  button: {
-    backgroundColor: '#0d47a1',  // Stylish blue for contrast
-    paddingVertical: 12,
-    borderRadius: 25,
-    alignItems: 'center',
-    marginTop: 10,
+    textAlign: 'center',
     marginBottom: 20,
   },
-  buttonText: {
+  picker: {
+    height: 50,
     color: '#fff',
-    fontSize: 18,
+    backgroundColor: '#333',
+    marginBottom: 15,
+    borderRadius: 10,
+    padding: 10,
+  },
+  animation: {
+    width: 50,
+    height: 50,
+  },
+  filterButton: {
+    backgroundColor: '#ffdf00',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  filterButtonText: {
+    color: '#000',
     fontWeight: 'bold',
   },
-  listItem: {
-    backgroundColor: '#252525',  // Slightly lighter gray for list items
-    padding: 12,
-    borderRadius: 8,
+  card: {
+    marginVertical: 8,
+    backgroundColor: '#1e1e1e',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 5,
+  },
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 10,
+  },
+  cardTitle: {
+    fontSize: 18,
+    color: '#fff',
+    marginBottom: 5,
+  },
+  exerciseImage: {
+    height: 100,
+    width: 100,
+    resizeMode: 'contain',
+    borderRadius: 10,
+  },
+  exerciseDetails: {
+    flex: 1,
+    paddingLeft: 10,
+  },
+  exerciseDescription: {
+    fontSize: 14,
+    color: '#bbb',
     marginBottom: 10,
   },
-  exerciseName: {
-    fontSize: 16,
-    color: '#fff',
+  addButton: {
+    backgroundColor: '#ffdf00',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#000',
+    fontWeight: 'bold',
+  },
+  exerciseList: {
     flex: 1,
   },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 20,
+  exerciseListContent: {
+    paddingBottom: 10,
+  },
+  subTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginVertical: 10,
   },
   workoutItem: {
     backgroundColor: '#333',
@@ -150,36 +311,88 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  subheader: {
-    fontSize: 20,
-    color: '#bbb',
+  exerciseName: {
+    fontSize: 16,
+    color: '#fff',
+    flex: 2,
+  },
+  editButton: {
+    backgroundColor: '#ffdf00',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  editButtonText: {
+    color: '#000',
     fontWeight: 'bold',
-    marginBottom: 10,
   },
   workoutList: {
-    marginTop: 10,
-  },
-  exerciseList: {
-    marginBottom: 10,
-  },
-  smallButton: {
-    backgroundColor: '#26a69a',  // Teal button for actions like Calculate 1RM
-    borderRadius: 25,
-    padding: 8,
-    marginHorizontal: 10,
-  },
-  inputSmall: {
     flex: 1,
-    marginHorizontal: 5,
-    backgroundColor: '#222',  // Slightly darker for input fields within cards
-    borderRadius: 25,
+  },
+  workoutListContent: {
+    paddingBottom: 10,
+  },
+  viewWorkoutButton: {
+    backgroundColor: '#ffdf00',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  viewWorkoutButtonText: {
+    color: '#000',
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: '#121212',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
+  },
+  inputLarge: {
+    backgroundColor: '#333',
+    color: '#fff',
+    borderRadius: 5,
     height: 40,
     paddingHorizontal: 10,
-    color: '#fff',
-    fontSize: 14,
+    marginBottom: 15,
+  },
+  saveButton: {
+    backgroundColor: '#ffdf00',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#000',
+    fontWeight: 'bold',
   },
 });
 
-
-
 export default WorkoutScreen;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
