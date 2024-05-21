@@ -1,6 +1,10 @@
 import React from 'react';
-import { StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
-import { Layout, Text, Button } from '@ui-kitten/components';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { Layout, Text } from '@ui-kitten/components';
+import LottieView from 'lottie-react-native';
+import { commonStyles } from './theme'; // Ensure the path is correct
+
+const { width, height } = Dimensions.get('window');
 
 function HomeScreen({ navigation }) {
   const handleButtonPress = () => {
@@ -8,85 +12,77 @@ function HomeScreen({ navigation }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <Layout style={styles.container}>
-        <Text category='h1' style={styles.title}>VOLUME UP YOUR BODY GOALS</Text>
-        <TouchableOpacity activeOpacity={0.7} style={styles.imageContainer}>
-          <Image source={require('../Workout/img/fitness.jpg')} style={styles.image} />
-        </TouchableOpacity>
-        <Button style={styles.button} onPress={handleButtonPress}>
-          MAKE YOUR OWN WORKOUT
-        </Button>
-        <Text style={styles.registerText}>DON'T HAVE ANY ACCOUNT? <Text style={styles.registerLink}>REGISTER</Text></Text>
-      </Layout>
-    </ScrollView>
+    <View style={styles.container}>
+      <LottieView
+        source={require('../Workout-1/assets/animations/background.json')}
+        autoPlay
+        loop
+        style={commonStyles.backgroundAnimation}
+      />
+      <ScrollView contentContainerStyle={styles.content}>
+        <Layout style={commonStyles.container}>
+          <View style={commonStyles.header}>
+            <TouchableOpacity style={styles.lottieWeightButton}>
+              <LottieView
+                source={require('../Workout-1/assets/animations/weight.json')}
+                autoPlay
+                loop
+                style={styles.lottieWeightAnimation}
+              />
+            </TouchableOpacity>
+            <View style={commonStyles.textContainer}>
+              <Text category='h1' style={commonStyles.title}>Workout-Maker</Text>
+              <Text style={commonStyles.subtitle}>Create your own workout</Text>
+            </View>
+          </View>
+          <View style={styles.lottieContainer}>
+            <TouchableOpacity style={commonStyles.lottieButton} onPress={handleButtonPress}>
+              <LottieView
+                source={require('../Workout-1/assets/animations/mobile-running.json')}
+                autoPlay
+                loop
+                style={commonStyles.lottieAnimation}
+              />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={commonStyles.createWorkoutButton} onPress={handleButtonPress}>
+            <Text style={commonStyles.createWorkoutButtonText}>Create Your Workout</Text>
+          </TouchableOpacity>
+        </Layout>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flexGrow: 1,
-    backgroundColor: '#1a1a1a',
-  },
   container: {
     flex: 1,
+    position: 'relative',
+  },
+  content: {
+    flexGrow: 1,
+    backgroundColor: 'transparent',
+  },
+  lottieWeightButton: {
+    width: 60,
+    height: 60,
+    marginBottom: 10,
+  },
+  lottieWeightAnimation: {
+    width: '100%',
+    height: '100%',
+  },
+  lottieContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 50,
-    backgroundColor: '#1a1a1a',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    fontFamily: 'sans-serif-medium',
-    letterSpacing: 1.5,
-    marginBottom: 30,
-  },
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 30,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  image: {
-    width: 350,
-    height: 250,
-    borderRadius: 10,
-    transition: 'transform 0.3s ease',
-  },
-  button: {
-    backgroundColor: '#ffdf00',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 5,
-  },
-  buttonText: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  registerText: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 20,
-    textAlign: 'center',
-  },
-  registerLink: {
-    color: '#ffdf00',
-    fontWeight: 'bold',
+    marginVertical: 20,
   },
 });
 
 export default HomeScreen;
+
+
+
+
 
 
 

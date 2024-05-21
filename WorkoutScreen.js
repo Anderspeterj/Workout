@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, Dimensions, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View, Text, StyleSheet, Alert, Dimensions, TouchableOpacity, Modal,
+  TextInput, KeyboardAvoidingView, Platform, FlatList
+} from 'react-native';
 import axios from 'axios';
 import { Card } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import LottieView from 'lottie-react-native'; // Import LottieView for animations
+import LottieView from 'lottie-react-native';
+import { commonStyles, colors } from './theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,10 +20,13 @@ function WorkoutScreen() {
   const [reps, setReps] = useState({});
   const [sets, setSets] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [currentExercise, setCurrentExercise] = useState(null);
   const [workoutModalVisible, setWorkoutModalVisible] = useState(false);
+  const [exerciseSelectionVisible, setExerciseSelectionVisible] = useState(false);
   const animationRefs = useRef({});
   const [activeAnimation, setActiveAnimation] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const fetchBodyParts = async () => {
     try {
@@ -50,6 +57,8 @@ function WorkoutScreen() {
           }
         });
         setExercises(response.data);
+        setFilterModalVisible(false); // Close the filter modal after fetching exercises
+        setExerciseSelectionVisible(true); // Show the exercise selection modal
       } catch (error) {
         console.error('Failed to fetch exercises:', error);
         Alert.alert('Error', 'Failed to load exercises');
@@ -65,7 +74,7 @@ function WorkoutScreen() {
       if (animationRefs.current[exercise.id]) {
         animationRefs.current[exercise.id].play();
       }
-    }, 50); // Give a short delay to ensure ref is ready before calling play
+    }, 50);
 
     setTimeout(() => {
       setActiveAnimation(null);
@@ -73,7 +82,11 @@ function WorkoutScreen() {
       setWeights(prev => ({ ...prev, [exercise.id]: '' }));
       setReps(prev => ({ ...prev, [exercise.id]: '' }));
       setSets(prev => ({ ...prev, [exercise.id]: '' }));
-    }, 5000); // Adjust this value to the duration of the animation in milliseconds
+      setShowSuccess(true);  // Show success animation
+      setTimeout(() => {
+        setShowSuccess(false);  // Hide success animation after 2 seconds
+      }, 2000);
+    }, 5000);
   };
 
   const openModal = (exercise) => {
@@ -98,124 +111,222 @@ function WorkoutScreen() {
     setWorkoutModalVisible(false);
   };
 
+  const closeExerciseSelectionModal = () => {
+    setExerciseSelectionVisible(false);
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create Your Workout</Text>
-      <Picker
-        selectedValue={selectedBodyPart}
-        onValueChange={(itemValue) => setSelectedBodyPart(itemValue)}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select Body Part" value="" />
-        {bodyParts.map((part, index) => (
-          <Picker.Item key={index.toString()} label={part} value={part} />
-        ))}
-      </Picker>
-      <TouchableOpacity style={styles.filterButton} onPress={fetchExercises}>
-        <Text style={styles.filterButtonText}>Filter</Text>
-      </TouchableOpacity>
-      <FlatList
-        data={exercises}
-        keyExtractor={(item) => item.id.toString()} // Ensure each key is unique
-        renderItem={({ item }) => (
-          <Card style={styles.card}>
-            <View style={styles.cardContent}>
-              <Card.Cover source={{ uri: item.gifUrl }} style={styles.exerciseImage} />
-              <View style={styles.exerciseDetails}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.exerciseDescription}>{item.target} exercise targeting {item.bodyPart}.</Text>
-                <TouchableOpacity style={styles.addButton} onPress={() => addToWorkout(item)}>
-                  {activeAnimation === item.id ? (
-                    <LottieView
-                      ref={ref => (animationRefs.current[item.id] = ref)}
-                      source={require('../Workout/assets/animations/bear-drinking-tea.json')}
-                      autoPlay={false}
-                      loop={false}
-                      style={styles.animation}
-                    />
-                  ) : (
-                    <Text style={styles.addButtonText}>Add to Workout</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Card>
-        )}
-        style={styles.exerciseList}
-        contentContainerStyle={styles.exerciseListContent}
+      <LottieView
+        source={require('../Workout-1/assets/animations/background.json')}
+        autoPlay
+        loop
+        style={commonStyles.backgroundAnimation}
       />
-      <TouchableOpacity style={styles.viewWorkoutButton} onPress={viewWorkout}>
-        <Text style={styles.viewWorkoutButtonText}>View Workout</Text>
-      </TouchableOpacity>
-      <Modal
-        visible={workoutModalVisible}
-        animationType="slide"
-        onRequestClose={closeWorkoutModal}
-      >
-        <View style={styles.modalContainer}>
-          <Text style={styles.subTitle}>Your Workout</Text>
-          <FlatList
-            data={workoutExercises}
-            keyExtractor={(item) => item.id.toString()} // Ensure each key is unique
-            renderItem={({ item }) => (
-              <View style={styles.workoutItem}>
-                <Text style={styles.exerciseName}>{item.name}</Text>
-                <TouchableOpacity style={styles.editButton} onPress={() => openModal(item)}>
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            style={styles.workoutList}
-            contentContainerStyle={styles.workoutListContent}
-          />
-          <TouchableOpacity style={styles.closeModalButton} onPress={closeWorkoutModal}>
-            <Text style={styles.closeModalButtonText}>Close</Text>
+      <View style={styles.overlay}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity style={styles.lottieButton}>
+            <LottieView
+              source={require('../Workout-1/assets/animations/weight.json')}
+              autoPlay
+              loop
+              style={styles.lottieAnimation}
+            />
+          </TouchableOpacity>
+          <Text style={styles.title}>Your Workout</Text>
+          <TouchableOpacity style={styles.lottieButton}>
+            <LottieView
+              source={require('../Workout-1/assets/animations/strong1.json')}
+              autoPlay
+              loop
+              style={styles.lottieAnimation}
+            />
           </TouchableOpacity>
         </View>
-      </Modal>
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        onRequestClose={closeModal}
-      >
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Exercise</Text>
-            {currentExercise && (
-              <>
-                <Text style={styles.exerciseName}>{currentExercise.name}</Text>
-                <TextInput
-                  placeholder="Weight"
-                  placeholderTextColor="#bbb"
-                  value={weights[currentExercise.id]}
-                  onChangeText={(text) => setWeights({ ...weights, [currentExercise.id]: text })}
-                  style={styles.inputLarge}
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  placeholder="Reps"
-                  placeholderTextColor="#bbb"
-                  value={reps[currentExercise.id]}
-                  onChangeText={(text) => setReps({ ...reps, [currentExercise.id]: text })}
-                  style={styles.inputLarge}
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  placeholder="Sets"
-                  placeholderTextColor="#bbb"
-                  value={sets[currentExercise.id]}
-                  onChangeText={(text) => setSets({ ...sets, [currentExercise.id]: text })}
-                  style={styles.inputLarge}
-                  keyboardType="numeric"
-                />
-                <TouchableOpacity style={styles.saveButton} onPress={saveExerciseDetails}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
-              </>
-            )}
+        <Text style={styles.promptText}>Tap the search icon to start filtering exercises</Text>
+        <TouchableOpacity style={styles.searchButton} onPress={() => setFilterModalVisible(true)}>
+          <LottieView
+            source={require('../Workout-1/assets/animations/search.json')}
+            autoPlay
+            loop
+            style={styles.searchAnimation}
+          />
+        </TouchableOpacity>
+        <FlatList
+          data={workoutExercises}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <Card key={item.id.toString()} style={styles.card}>
+              <View style={styles.cardContent}>
+                <Card.Cover source={{ uri: item.gifUrl }} style={styles.exerciseImage} />
+                <View style={styles.exerciseDetails}>
+                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <Text style={styles.exerciseDescription}>{item.target} exercise targeting {item.bodyPart}.</Text>
+                  <TouchableOpacity style={styles.addButton} onPress={() => openModal(item)}>
+                    <Text style={styles.addButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Card>
+          )}
+          contentContainerStyle={styles.exerciseListContent}
+        />
+        <TouchableOpacity style={styles.viewWorkoutButton} onPress={viewWorkout}>
+          <Text style={styles.viewWorkoutButtonText}>View Workout</Text>
+        </TouchableOpacity>
+        <Modal
+          visible={workoutModalVisible}
+          animationType="slide"
+          onRequestClose={closeWorkoutModal}
+          transparent={true}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.workoutModalContainer}>
+              <Text style={commonStyles.title}>Your Workout</Text>
+              <FlatList
+                data={workoutExercises}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View key={item.id.toString()} style={styles.workoutItem}>
+                    <Text style={styles.exerciseName}>{item.name}</Text>
+                    <TouchableOpacity style={styles.editButton} onPress={() => openModal(item)}>
+                      <Text style={styles.editButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                contentContainerStyle={styles.workoutListContent}
+              />
+              <TouchableOpacity style={styles.closeButton} onPress={closeWorkoutModal}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        </Modal>
+        <Modal
+          visible={modalVisible}
+          animationType="slide"
+          onRequestClose={closeModal}
+          transparent={true}
+        >
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={commonStyles.title}>Edit Exercise</Text>
+              {currentExercise && (
+                <>
+                  <Text style={styles.exerciseName}>{currentExercise.name}</Text>
+                  <TextInput
+                    placeholder="Weight"
+                    placeholderTextColor="#bbb"
+                    value={weights[currentExercise.id]}
+                    onChangeText={(text) => setWeights({ ...weights, [currentExercise.id]: text })}
+                    style={styles.inputLarge}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    placeholder="Reps"
+                    placeholderTextColor="#bbb"
+                    value={reps[currentExercise.id]}
+                    onChangeText={(text) => setReps({ ...reps, [currentExercise.id]: text })}
+                    style={styles.inputLarge}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    placeholder="Sets"
+                    placeholderTextColor="#bbb"
+                    value={sets[currentExercise.id]}
+                    onChangeText={(text) => setSets({ ...sets, [currentExercise.id]: text })}
+                    style={styles.inputLarge}
+                    keyboardType="numeric"
+                  />
+                  <TouchableOpacity style={styles.saveButton} onPress={saveExerciseDetails}>
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+        <Modal
+          visible={filterModalVisible}
+          animationType="slide"
+          onRequestClose={() => setFilterModalVisible(false)}
+          transparent={true}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={commonStyles.title}>Filter Exercises</Text>
+              <Picker
+                selectedValue={selectedBodyPart}
+                onValueChange={(itemValue) => setSelectedBodyPart(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Select Body Part" value="" />
+                {bodyParts.map((part, index) => (
+                  <Picker.Item key={index.toString()} label={part} value={part} />
+                ))}
+              </Picker>
+              <TouchableOpacity style={styles.filterButton} onPress={fetchExercises}>
+                <Text style={styles.filterButtonText}>Apply Filter</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setFilterModalVisible(false)}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={exerciseSelectionVisible}
+          animationType="slide"
+          onRequestClose={closeExerciseSelectionModal}
+          transparent={true}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.exerciseSelectionContainer}>
+              <Text style={commonStyles.title}>Select Exercises</Text>
+              <FlatList
+                data={exercises}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <Card key={item.id.toString()} style={styles.card}>
+                    <View style={styles.cardContent}>
+                      <Card.Cover source={{ uri: item.gifUrl }} style={styles.exerciseImage} />
+                      <View style={styles.exerciseDetails}>
+                        <Text style={styles.cardTitle}>{item.name}</Text>
+                        <Text style={styles.exerciseDescription}>{item.target} exercise targeting {item.bodyPart}.</Text>
+                        <TouchableOpacity style={styles.addButton} onPress={() => addToWorkout(item)}>
+                          {activeAnimation === item.id ? (
+                            <LottieView
+                              ref={ref => (animationRefs.current[item.id] = ref)}
+                              source={require('../Workout-1/assets/animations/bear-drinking-tea.json')}
+                              autoPlay={false}
+                              loop={false}
+                              style={styles.animation}
+                            />
+                          ) : (
+                            <Text style={styles.addButtonText}>Add to Workout</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </Card>
+                )}
+                contentContainerStyle={styles.exerciseListContent}
+              />
+              <TouchableOpacity style={styles.closeButton} onPress={closeExerciseSelectionModal}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        {showSuccess && (
+          <LottieView
+            source={require('../Workout-1/assets/animations/success.json')}
+            autoPlay
+            loop={false}
+            style={styles.successAnimation}
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -223,15 +334,32 @@ function WorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    position: 'relative',
+    backgroundColor: colors.background,
+  },
+  overlay: {
+    flex: 1,
     padding: 20,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
+  },
+  promptText: {
+    textAlign: 'center',
+    color: colors.textPrimary,
+    marginBottom: 20,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   picker: {
     height: 50,
@@ -241,40 +369,54 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
   },
+  filterButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 20,
+    alignSelf: 'center', // Center the button
+  },
+  filterButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   animation: {
     width: 50,
     height: 50,
   },
-  filterButton: {
-    backgroundColor: '#ffdf00',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  filterButtonText: {
-    color: '#000',
-    fontWeight: 'bold',
-  },
   card: {
     marginVertical: 8,
-    backgroundColor: '#1e1e1e',
-    borderRadius: 10,
+    backgroundColor: 'rgba(50, 50, 50, 0.8)', // Darker background for better contrast
+    borderRadius: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    elevation: 6,
   },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    padding: 15,
   },
   cardTitle: {
     fontSize: 18,
     color: '#fff',
     marginBottom: 5,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Lighter shadow for readability
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#ddd',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Lighter shadow for readability
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
   },
   exerciseImage: {
     height: 100,
@@ -288,32 +430,25 @@ const styles = StyleSheet.create({
   },
   exerciseDescription: {
     fontSize: 14,
-    color: '#bbb',
+    color: '#ccc', // Lightened text color
     marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Lighter shadow for readability
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
   },
   addButton: {
-    backgroundColor: '#ffdf00',
+    backgroundColor: colors.primary,
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 10,
     alignItems: 'center',
   },
   addButtonText: {
-    color: '#000',
+    color: '#fff',
     fontWeight: 'bold',
-  },
-  exerciseList: {
-    flex: 1,
   },
   exerciseListContent: {
-    paddingBottom: 10,
-  },
-  subTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginVertical: 10,
+    paddingBottom: 20,
   },
   workoutItem: {
     backgroundColor: '#333',
@@ -329,49 +464,45 @@ const styles = StyleSheet.create({
     flex: 2,
   },
   editButton: {
-    backgroundColor: '#ffdf00',
+    backgroundColor: colors.primary,
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 10,
     alignItems: 'center',
   },
   editButtonText: {
-    color: '#000',
+    color: '#fff',
     fontWeight: 'bold',
-  },
-  workoutList: {
-    flex: 1,
   },
   workoutListContent: {
     paddingBottom: 10,
   },
-  viewWorkoutButton: {
-    backgroundColor: '#ffdf00',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  viewWorkoutButtonText: {
-    color: '#000',
-    fontWeight: 'bold',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
   },
   modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: '#121212',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#42ccfa',
     borderRadius: 10,
     padding: 20,
+    margin: 20,
   },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
+  workoutModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: '#42ccfa',
+    padding: 20,
+    margin: 20,
+    borderRadius: 10,
+  },
+  exerciseSelectionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: '#42ccfa',
+    padding: 20,
+    margin: 20,
+    borderRadius: 10,
   },
   inputLarge: {
     backgroundColor: '#333',
@@ -381,38 +512,76 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 15,
   },
-  saveButton: {
-    backgroundColor: '#ffdf00',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
+  lottieButton: {
+    width: 60,
+    height: 60,
   },
-  saveButtonText: {
-    color: '#000',
-    fontWeight: 'bold',
+  lottieAnimation: {
+    width: '100%',
+    height: '100%',
   },
-  closeModalButton: {
-    backgroundColor: '#ffdf00',
+  searchButton: {
+    width: 60,
+    height: 60,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  searchAnimation: {
+    width: '100%',
+    height: '100%',
+  },
+  viewWorkoutButton: {
+    backgroundColor: colors.secondary,
     paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
     alignItems: 'center',
+    alignSelf: 'center', // Center the button
     marginTop: 20,
   },
-  closeModalButtonText: {
-    color: '#000',
+  viewWorkoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
+  },
+  closeButton: {
+    backgroundColor: colors.secondary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: 20,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  successAnimation: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 100,
+    height: 100,
+    zIndex: 1,
   },
 });
 
 export default WorkoutScreen;
-
-
-
-
-
-
-
-
 
 
 

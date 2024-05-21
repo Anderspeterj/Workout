@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native
 import XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { commonStyles, colors } from './theme'; // Ensure the path is correct
 
 const WorkoutListScreen = ({ route }) => {
   const { workoutExercises, weights, reps, sets } = route.params;
@@ -28,8 +29,8 @@ const WorkoutListScreen = ({ route }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Your Workout</Text>
+    <View style={commonStyles.container}>
+      <Text style={commonStyles.title}>Your Workout</Text>
       <FlatList
         data={workoutExercises}
         keyExtractor={(item) => item.id.toString()}
@@ -45,26 +46,14 @@ const WorkoutListScreen = ({ route }) => {
         style={styles.workoutList}
         contentContainerStyle={styles.workoutListContent}
       />
-      <TouchableOpacity style={styles.exportButton} onPress={exportToExcel}>
-        <Text style={styles.exportButtonText}>Export to Excel</Text>
+      <TouchableOpacity style={commonStyles.createWorkoutButton} onPress={exportToExcel}>
+        <Text style={commonStyles.createWorkoutButtonText}>Export to Excel</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-    padding: 20,
-  },
-  title: {
-    fontSize: 26, // Increased size
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
   workoutItem: {
     backgroundColor: '#333',
     borderRadius: 10,
@@ -74,12 +63,12 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textPrimary,
     marginBottom: 5,
   },
   exerciseDetails: {
     fontSize: 16,
-    color: '#bbb',
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   workoutList: {
@@ -88,19 +77,9 @@ const styles = StyleSheet.create({
   workoutListContent: {
     paddingBottom: 10,
   },
-  exportButton: {
-    backgroundColor: '#ffdf00', // Accent color for consistency
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  exportButtonText: {
-    color: '#000', // Changed text color to black for better contrast
-    fontWeight: 'bold',
-  },
 });
 
 export default WorkoutListScreen;
+
 
 
